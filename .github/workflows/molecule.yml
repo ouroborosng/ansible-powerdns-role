@@ -2,7 +2,11 @@ name: Tests
 
 on:
   push:
-    branches: [main, develop]
+    branches:
+      - main
+      - develop
+      - feature/**
+      - fix/**
 
 jobs:
   molecule:
@@ -17,29 +21,14 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Login to GHCR
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Use Molecule action
-        uses: robertdebock/molecule-action@v6
-        with:
-          namespace: ouroborosng
-          image: tox-molecule-image
-          tag: latest
-        env:
-          DOCKER_HOST: unix:///var/run/docker.sock
-        volumes: |
-          /var/run/docker.sock:/var/run/docker.sock
+      - name: Run molecule test scenarios
+        run: tox
 
       - name: Upload logs on failure
         if: failure()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: molecule-logs
           path: |
