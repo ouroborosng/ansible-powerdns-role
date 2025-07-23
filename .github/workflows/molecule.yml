@@ -15,14 +15,19 @@ jobs:
       image: ghcr.io/ouroborosng/tox-molecule-image:latest
     services:
       docker:
-        image: docker:24-dind
+        image: docker:dind
         options: --privileged
         volumes:
-          - /var/run/docker.sock:/var/run/docker.sock
+          - /var/run/docker.sock:/var/run/docker.sock:ro
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Debug Docker
+        run: |
+          docker version
+          docker info
 
       - name: Run molecule test scenarios
         run: tox
