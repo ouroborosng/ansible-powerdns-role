@@ -11,8 +11,6 @@ on:
 jobs:
   molecule:
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/ouroborosng/tox-molecule-image:latest
     services:
       docker:
         image: docker:dind
@@ -25,7 +23,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Run molecule test scenarios
-        run: tox > ./molecule.log
+        run: |
+          docker run --rm -v "$PWD":/workspace -w /workspace ghcr.io/ouroborosng/tox-molecule-image:latest tox > ./molecule-logs
 
       - name: Upload logs on failure
         if: failure()
