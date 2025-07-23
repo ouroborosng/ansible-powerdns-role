@@ -13,11 +13,13 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/ouroborosng/tox-molecule-image:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-      volumes:
-        - /var/run/docker.sock:/var/run/docker.sock
+    services:
+      docker:
+        image: docker:24-dind
+        privileged: true
+        options: --network host
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
 
     steps:
       - name: Checkout repository
