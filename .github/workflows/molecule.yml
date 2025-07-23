@@ -24,6 +24,7 @@ jobs:
 
       - name: Run molecule test scenarios
         run: |
+          ls -la /var/run/docker.sock
           docker run --rm -v "$PWD":/workspace -w /workspace ghcr.io/ouroborosng/tox-molecule-image:latest tox > ./molecule-logs
 
       - name: Upload logs on failure
