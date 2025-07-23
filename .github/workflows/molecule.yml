@@ -13,6 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/ouroborosng/tox-molecule-image:latest
+    services:
+      docker:
+        image: docker:dind
+        options: --privileged
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock:ro
 
     steps:
       - name: Checkout repository
