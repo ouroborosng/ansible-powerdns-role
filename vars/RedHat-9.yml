@@ -1,0 +1,16 @@
+---
+
+# Packages needed to install PostgreSQL
+pdns_psql_packages:
+  - postgresql-server
+  - postgresql-contrib
+  - postgresql
+
+postgresql_python_package: python3-psycopg2
+
+# PowerDNS pdns-backend-psql ddl script location
+pdns_pgsql_schema_file: /usr/share/doc/pdns/schema.pgsql.sql
+
+# List of PowerDNS Authoritative Server backends packages on RedHat
+default_pdns_backends_packages:
+  gpgsql: pdns-backend-postgresql

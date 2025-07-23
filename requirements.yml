@@ -1,0 +1,10 @@
+---
+collections:
+    - community.postgresql
+roles:
+    - name: PowerDNS.pdns
+      version: master
+      src: https://github.com/PowerDNS/pdns-ansible.git
+    - name: PowerDNS.pdns_recursor
+      version: master
+      src: https://github.com/PowerDNS/pdns_recursor-ansible.git

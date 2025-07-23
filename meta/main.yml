@@ -1,0 +1,14 @@
+---
+
+galaxy_info:
+  role_name: "pdns_postgresql_database"
+  namespace: "ouroborosng"
+  author: Ouroborosng
+  description: Install and configure the PowerDNS Authoritative's PostgreSQL backend
+  license: MIT
+  min_ansible_version: 2.16
+  galaxy_tags:
+    - system
+    - dns
+    - pdns
+    - powerdns
