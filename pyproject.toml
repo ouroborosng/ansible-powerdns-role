@@ -5,11 +5,17 @@ description = "Ansible role for deployment PowerDNS with optional PostgreSQL bac
 readme = "README.md"
 requires-python = ">=3.10"
 
-[tool.uv.dependencies]
-# Core testing tools
-tox = ">=4.27.0"
-tox-gh-actions = ">=3.3.0"
+[project.optional-dependencies]
+dev = [
+    # Core testing tools
+    "tox>=4.27.0",
+    "tox-gh-actions>=3.3.0",
 
-# Ansible and Molecule
-ansible-core = ">=2.16,<2.18"
-molecule = ">=25.6.0"
+    # Ansible and Molecule
+    "ansible-core>=2.16,<2.18",
+    "molecule>=25.6.0",
+]
+
+[tool.setuptools]
+# no pyhon module pacakge needed
+py-modules = []
