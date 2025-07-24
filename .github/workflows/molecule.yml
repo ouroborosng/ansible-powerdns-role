@@ -27,13 +27,13 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
 
-      - name: Update lock file
+      - name: Install extra dev dependencies
         run: |
           uv venv
           uv pip install ".[dev]"
 
       - name: Molecule test scenarios
-        run: tox
+        run: uv run tox
 
       - name: Upload logs on failure
         if: failure()

@@ -38,7 +38,9 @@ wheels = [
 name = "ansible-powerdns-role"
 version = "1.0.0"
 source = { virtual = "." }
-dependencies = [
+
+[package.optional-dependencies]
+dev = [
     { name = "ansible-core" },
     { name = "molecule" },
     { name = "tox" },
@@ -47,11 +49,12 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "ansible-core", specifier = ">=2.16,<2.18" },
-    { name = "molecule", specifier = ">=25.6.0" },
-    { name = "tox", specifier = ">=4.27.0" },
-    { name = "tox-gh-actions", specifier = ">=3.3.0" },
+    { name = "ansible-core", marker = "extra == 'dev'", specifier = ">=2.16,<2.18" },
+    { name = "molecule", marker = "extra == 'dev'", specifier = ">=25.6.0" },
+    { name = "tox", marker = "extra == 'dev'", specifier = ">=4.27.0" },
+    { name = "tox-gh-actions", marker = "extra == 'dev'", specifier = ">=3.3.0" },
 ]
+provides-extras = ["dev"]
 
 [[package]]
 name = "attrs"
