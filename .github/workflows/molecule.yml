@@ -16,10 +16,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Run molecule test scenarios
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: Update lock file
         run: |
-          ls -la /var/run/docker.sock
-          docker run --privileged --rm -v "$PWD":/workspace -w /workspace ghcr.io/ouroborosng/tox-molecule-image:latest tox > ./molecule-logs
+          uv pip install --extra dev
+
+      - name: Molecule test scenarios
+        run: tox
 
       - name: Upload logs on failure
         if: failure()
