@@ -15,7 +15,7 @@ rm -f /lib/systemd/system/basic.target.wants/*;\
 rm -f /lib/systemd/system/anaconda.target.wants/*;
 
 # Install sudo and disable requiretty
-RUN yum -y install sudo && \
+RUN yum -y install sudo pam shadow-utils && \
     mkdir -p /etc/sudoers.d && \
     echo "ALL ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/nopasswd && \
     chmod 0440 /etc/sudoers.d/nopasswd
