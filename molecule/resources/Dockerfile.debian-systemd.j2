@@ -22,4 +22,10 @@ VOLUME [ "/sys/fs/cgroup" ]
 
 CMD ["/sbin/init"]
 
-RUN if [ $(command -v apt-get) ]; then apt-get update && apt-get upgrade -y && apt-get install -y python3 sudo bash net-tools ca-certificates && apt-get clean; fi
+RUN if [ $(command -v apt-get) ]; then \
+        apt-get update && apt-get upgrade -y && \
+        apt-get install -y python3 sudo bash net-tools ca-certificates && \
+        echo "ALL ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/nopasswd && \
+        chmod 0440 /etc/sudoers.d/nopasswd && \
+        apt-get clean; \
+    fi
