@@ -1,0 +1,165 @@
+---
+
+- name: Install PostgreSQL database (conditionally)
+  ansible.builtin.package:
+    name: "{{ pdns_psql_packages }}"
+    state: present
+  when: install_postgresql | default(false) | bool
+  tags: postgresql
+
+- name: Initialize PostgreSQL database (RedHat family)
+  ansible.builtin.command: "postgresql-setup --initdb"
+  when:
+    - install_postgresql | default(false) | bool
+    - ansible_os_family == "RedHat"
+    - ansible_distribution_major_version is version('7', '>=')
+  become: true
+  args:
+    creates: /var/lib/pgsql/data/PG_VERSION
+
+- name: Initialize PostgreSQL database (Archlinux)
+  ansible.builtin.command: "initdb -D /var/lib/postgres/data"
+  when:
+    - install_postgresql | default(false) | bool
+    - ansible_distribution == "Archlinux"
+  become: true
+  args:
+    creates: /var/lib/postgres/data/PG_VERSION
+
+- name: Enable PostgreSQL service
+  ansible.builtin.systemd:
+    name: "{{ postgresql_service_name }}"
+    enabled: true
+  when: install_postgresql | default(false) | bool
+  become: true
+
+- name: Start PostgreSQL service
+  ansible.builtin.systemd:
+    name: "{{ postgresql_service_name }}"
+    state: started
+  when: install_postgresql | default(false) | bool
+  become: true
+
+- name: Ensure PostgreSQL Python libraries and PowerDNS PostgreSQL backend are installed
+  ansible.builtin.package:
+    name:
+      - "{{ postgresql_python_package }}"
+      - "{{ default_pdns_backends_packages.gpgsql }}"
+      - "{{ 'postgresql-client' if ansible_os_family == 'Debian' else 'postgresql' }}"
+    state: present
+  become: true
+
+- name: Create PowerDNS database
+  community.postgresql.postgresql_db:
+    name: "{{ postgresql_pdns_dbname }}"
+    state: present
+    login_host: "{{ postgresql_host if postgresql_connection_type == 'password' else omit }}"
+    login_port: "{{ postgresql_port if postgresql_connection_type == 'password' else omit }}"
+    login_user: "{{ postgresql_admin_user if postgresql_connection_type == 'password' else omit }}"
+    login_password: "{{ postgresql_admin_password if postgresql_connection_type == 'password' else omit }}"
+  become: true
+
+- name: Create PowerDNS database user
+  community.postgresql.postgresql_user:
+    name: "{{ postgresql_pdns_user }}"
+    password: "{{ postgresql_pdns_password }}"
+    encrypted: true
+    state: present
+    login_host: "{{ postgresql_host if postgresql_connection_type == 'password' else omit }}"
+    login_port: "{{ postgresql_port if postgresql_connection_type == 'password' else omit }}"
+    login_user: "{{ postgresql_admin_user if postgresql_connection_type == 'password' else omit }}"
+    login_password: "{{ postgresql_admin_password if postgresql_connection_type == 'password' else omit }}"
+  become: true
+
+- name: Grant privileges to PowerDNS user
+  community.postgresql.postgresql_privs:
+    db: "{{ postgresql_pdns_dbname }}"
+    roles: "{{ postgresql_pdns_user }}"
+    objs: "{{ postgresql_pdns_dbname }}"
+    type: database
+    privs: ALL
+    login_host: "{{ postgresql_host if postgresql_connection_type == 'password' else omit }}"
+    login_port: "{{ postgresql_port if postgresql_connection_type == 'password' else omit }}"
+    login_user: "{{ postgresql_pdns_user if postgresql_connection_type == 'password' else omit }}"
+    login_password: "{{ postgresql_pdns_password if postgresql_connection_type == 'password' else omit }}"
+  become: true
+
+- name: Locate pg_hba.conf
+  ansible.builtin.command: "psql -t -P format=unaligned -c 'SHOW hba_file;'"
+  become: true
+  register: pg_hba_path
+  changed_when: false
+  when: install_postgresql | default(false) | bool
+
+
+- name: Ensure PowerDNS access is configured in pg_hba.conf
+  ansible.builtin.blockinfile:
+    path: "{{ pg_hba_path.stdout }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK FOR POWERDNS"
+    block: |
+      host    all             {{ postgresql_pdns_user }}        127.0.0.1/32                     md5
+      host    all             {{ postgresql_pdns_user }}        {{ postgresql_host }}/32         md5
+      host    replication     {{ postgresql_pdns_user }}        127.0.0.1/32                     md5
+      host    replication     {{ postgresql_pdns_user }}        {{ postgresql_host }}/32         md5
+    insertbefore: '^host'
+  when: install_postgresql | default(false) | bool
+  notify: Reload PostgreSQL
+  become: true
+
+- name: Check if PowerDNS import schema file exists
+  ansible.builtin.stat:
+    path: "{{ pdns_pgsql_schema_file }}"
+  register: pdns_schema_stat
+
+- name: Check if PowerDNS domains table exists
+  community.postgresql.postgresql_query:
+    db: "{{ postgresql_pdns_dbname }}"
+    login_host: "{{ postgresql_host if postgresql_connection_type == 'password' else omit }}"
+    login_port: "{{ postgresql_port if postgresql_connection_type == 'password' else omit }}"
+    login_user: "{{ postgresql_admin_user if postgresql_connection_type == 'password' else omit }}"
+    login_password: "{{ postgresql_admin_password if postgresql_connection_type == 'password' else omit }}"
+    query: >
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = 'domains'
+      );
+  become: true
+  register: pdns_domains_table_check
+  when: pdns_schema_stat.stat.exists
+
+- name: Import PowerDNS schema to PostgreSQL using postgresql_db
+  community.postgresql.postgresql_db:
+    name: "{{ postgresql_pdns_dbname }}"
+    login_host: "{{ postgresql_host if postgresql_connection_type == 'password' else omit }}"
+    login_port: "{{ postgresql_port if postgresql_connection_type == 'password' else omit }}"
+    login_user: "{{ postgresql_admin_user if postgresql_connection_type == 'password' else omit }}"
+    login_password: "{{ postgresql_admin_password if postgresql_connection_type == 'password' else omit }}"
+    target: "{{ pdns_pgsql_schema_file }}"
+    state: restore
+  become: true
+  register: pdns_import_result
+  when:
+    - pdns_schema_stat.stat.exists
+    - pdns_domains_table_check.query_result is defined
+    - pdns_domains_table_check.query_result | length > 0
+    - pdns_domains_table_check.query_result[0].exists == false
+
+- name: Display PowerDNS schema import details
+  ansible.builtin.debug:
+    var: pdns_import_result
+  when: (pdns_import_result is defined and pdns_import_result.changed)
+
+- name: Grant table privileges to PowerDNS user
+  community.postgresql.postgresql_privs:
+    db: "{{ postgresql_pdns_dbname }}"
+    roles: "{{ postgresql_pdns_user }}"
+    objs: ALL_IN_SCHEMA
+    type: table
+    schema: public
+    privs: ALL
+    login_host: "{{ postgresql_host if postgresql_connection_type == 'password' else omit }}"
+    login_port: "{{ postgresql_port if postgresql_connection_type == 'password' else omit }}"
+    login_user: "{{ postgresql_admin_user if postgresql_connection_type == 'password' else omit }}"
+    login_password: "{{ postgresql_admin_password if postgresql_connection_type == 'password' else omit }}"
+  become: true

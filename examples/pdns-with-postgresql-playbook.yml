@@ -1,0 +1,31 @@
+# Install PowerDNS.pdns and PostgreSQL database backend
+---
+- hosts: dns
+  become: true
+  vars:
+    install_postgresql: true
+    postgresql_connection_type: peer
+    # pdns.conf
+    pdns_config:
+      master: true
+      slave: false
+      setgid: pdns
+      setuid: pdns
+      local-address: 127.0.0.1,::1
+      local-port: 5300
+      api: yes
+      api-key: generate_your_own_api_key
+      webserver: yes
+      webserver-address: "0.0.0.0,::"
+      webserver-port: 8081
+      webserver-allow-from:
+    pdns_backends:
+      'gpgsql:ns1':
+        host: "{{ postgresql_host }}"
+        port: "{{ postgresql_port }}"
+        dbname: "{{ postgresql_pdns_dbname }}"
+        user: "{{ postgresql_pdns_user }}"
+        password: "{{ postgresql_pdns_password }}"
+  roles:
+    - role: ouroborosng.pdns_postgresql_database
+    - role: PowerDNS.pdns

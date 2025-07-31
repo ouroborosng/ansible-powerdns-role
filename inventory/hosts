@@ -1,0 +1,2 @@
+[dns]
+your_host ansible_user=dns

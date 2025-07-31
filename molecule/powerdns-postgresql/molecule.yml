@@ -1,0 +1,119 @@
+---
+
+scenario:
+  name: powerdns-postgresql
+
+driver:
+  name: docker
+
+dependency:
+  name: galaxy
+
+platforms:
+
+  - name: rockylinux-9
+    groups: ["powerdns"]
+    image: rockylinux:9.0
+    dockerfile_tpl: centos-systemd
+
+  - name: almalinux-9
+    groups: ["powerdns"]
+    image: almalinux:9
+    dockerfile_tpl: centos-systemd
+
+  - name: oraclelinux-9
+    groups: ["powerdns"]
+    image: oraclelinux:9
+    dockerfile_tpl: centos-systemd
+
+  - name: ubuntu-2204
+    groups: ["powerdns"]
+    image: ubuntu:22.04
+    tmpfs:
+      - /run
+      - /tmp
+    dockerfile_tpl: debian-systemd
+
+  - name: ubuntu-2404
+    groups: ["powerdns"]
+    image: ubuntu:24.04
+    tmpfs:
+      - /run
+      - /tmp
+    dockerfile_tpl: debian-systemd
+
+  - name: debian-11
+    groups: ["powerdns"]
+    image: debian:11
+    privileged: True
+    volume_mounts:
+      - "/sys/fs/cgroup:/sys/fs/cgroup:rw"
+    tmpfs:
+      - /run
+      - /run/lock
+      - /tmp
+    dockerfile_tpl: debian-systemd
+    environment: { container: docker }
+
+  - name: debian-12
+    groups: ["powerdns"]
+    image: debian:12
+    privileged: True
+    volume_mounts:
+      - "/sys/fs/cgroup:/sys/fs/cgroup:rw"
+    tmpfs:
+      - /run
+      - /run/lock
+      - /tmp
+    dockerfile_tpl: debian-systemd
+    environment: { container: docker }
+
+  # In order to run the tests we need
+  # a PostgreSQL container to be up & running
+  - name: postgresql
+    image: postgres:15
+    env:
+      POSTGRES_USER: pdns_admin
+      POSTGRES_PASSWORD: pdns_admin_pwd
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # Declaring the container as service,
+    # will link it to the others Platforms containers
+    # on creation.
+    is_service: yes
+
+provisioner:
+  name: ansible
+  options:
+    diff: True
+    v: True
+  config_options:
+    defaults:
+      gathering: smart
+      fact_caching: jsonfile
+      fact_caching_connection: .ansible_cache
+      fact_caching_timeout: 7200
+    ssh_connection:
+      pipelining: true
+  playbooks:
+    create: ../resources/create.yml
+    destroy: ../resources/destroy.yml
+    prepare: ../resources/prepare.yml
+  lint: ansible-lint -x ANSIBLE0006 ANSIBLE0016 306
+  ansible:
+    version: ">=2.12,<2.14"
+
+lint: yamllint defaults tasks meta vars
+
+verifier:
+  name: testinfra
+  options:
+    hosts: "powerdns"
+    vvv: True
+  directory: ../resources/tests/all
+  additional_files_or_dirs:
+    # path relative to 'directory'
+    - ../backend-postgresql/

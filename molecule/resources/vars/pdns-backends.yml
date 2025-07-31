@@ -1,0 +1,21 @@
+---
+
+##
+# PowerDNS Backends
+##
+
+pdns_backends:
+  gpgsql:
+    host: "postgresql"                                      # This is relying on Docker's service discovery
+    port: 5432
+    dbname: "{{ ansible_hostname | replace('.', '_') }}"    # Each Platform will have its PostgreSQL DB
+    user: "{{ postgresql_pdns_user }}"
+    password: "{{ postgresql_pdns_password }}"
+
+pdns_pgsql_databases_credentials:
+  gpgsql:
+    priv_user: "{{ ansible_env.POSTGRESQL_ENV_POSTGRES_USER }}"
+    priv_password: "{{ ansible_env.POSTGRESQL_ENV_POSTGRES_PASSWORD }}"   # The PostgreSQL root password
+    priv_host:                                                            # is injected by Docker into the env
+      - '%'
+      - 'localhost'

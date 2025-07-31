@@ -1,0 +1,13 @@
+---
+
+# Packages needed to install PostgreSQL
+pdns_psql_packages:
+  - postgresql
+
+postgresql_python_package: python-psycopg2
+
+# PowerDNS pdns-backend-psql ddl script location
+pdns_pgsql_schema_file: /usr/share/doc/pdns/schema.pgsql.sql
+
+# List of PowerDNS Backends packages. Arch ships all backends in the main package
+default_pdns_backends_packages: {}

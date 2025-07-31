@@ -1,0 +1,14 @@
+---
+
+- name: PDNS with remote PostgreSQL via password
+  hosts: powerdns
+  vars_files:
+    - ../resources/vars/test-secrets.yml
+    - ../resources/vars/pdns-common.yml
+    - ../resources/vars/pdns-repo-master.yml
+    - ../resources/vars/pdns-backends.yml
+  roles:
+    - role: ouroborosng.pdns_postgresql_database
+      vars:
+        postgresql_connection_type: password
+    - role: PowerDNS.pdns

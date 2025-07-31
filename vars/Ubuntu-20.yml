@@ -1,0 +1,16 @@
+---
+
+# Packages needed to install PostgreSQL
+pdns_psql_packages:
+  - postgresql
+  - postgresql-client
+  - postgresql-contrib
+
+postgresql_python_package: python3-psycopg2
+
+# PowerDNS pdns-backend-psql ddl script location
+pdns_pgsql_schema_file: /usr/share/doc/pdns-backend-pgsql/schema.pgsql.sql
+
+# List of PowerDNS Authoritative Server Backends packages on Debian
+default_pdns_backends_packages:
+  gpgsql: pdns-backend-pgsql
