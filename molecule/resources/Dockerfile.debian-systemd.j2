@@ -7,6 +7,11 @@ RUN if [ ! -e /sbin/init ]; then ln -s /lib/systemd/systemd /sbin/init ; fi
 
 ENV container docker
 
+# Prevent interactive prompts during package installation
+# Set timezone to UTC to avoid interactive tzdata configuration during installation which is a transitive dependency of postgresql
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
 # Don't start the optional systemd services.
 RUN find /etc/systemd/system \
          /lib/systemd/system \
@@ -22,4 +27,9 @@ VOLUME [ "/sys/fs/cgroup" ]
 
 CMD ["/sbin/init"]
 
-RUN if [ $(command -v apt-get) ]; then apt-get update && apt-get upgrade -y && apt-get install -y python3 sudo bash net-tools ca-certificates && apt-get clean; fi
+RUN if [ $(command -v apt-get) ]; then \
+        apt-get update && apt-get upgrade -y && \
+        apt-get install -y python3 sudo bash net-tools ca-certificates \
+        postgresql postgresql-client postgresql-contrib python3-psycopg2 && \
+        apt-get clean; \
+    fi

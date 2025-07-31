@@ -106,33 +106,49 @@
   notify: Reload PostgreSQL
   become: true
 
-- name: Check if PowerDNS schema file exists
+- name: Check if PowerDNS import schema file exists
   ansible.builtin.stat:
     path: "{{ pdns_pgsql_schema_file }}"
   register: pdns_schema_stat
 
-- name: Import PowerDNS schema to PostgreSQL
-  ansible.builtin.command: >
-    psql
-    {{ '-h ' + postgresql_host if postgresql_connection_type == 'password' else '' }}
-    {{ '-p ' + postgresql_port | string if postgresql_connection_type == 'password' else '' }}
-    {{ '-U ' + postgresql_admin_user if postgresql_connection_type == 'password' else '' }}
-    {{ postgresql_pdns_dbname }} -f {{ pdns_pgsql_schema_file }}
-  environment: "{{ {'PGPASSWORD': postgresql_admin_password} if postgresql_connection_type == 'password' else {} }}"
+- name: Check if PowerDNS domains table exists
+  community.postgresql.postgresql_query:
+    db: "{{ postgresql_pdns_dbname }}"
+    login_host: "{{ postgresql_host if postgresql_connection_type == 'password' else omit }}"
+    login_port: "{{ postgresql_port if postgresql_connection_type == 'password' else omit }}"
+    login_user: "{{ postgresql_admin_user if postgresql_connection_type == 'password' else omit }}"
+    login_password: "{{ postgresql_admin_password if postgresql_connection_type == 'password' else omit }}"
+    query: >
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = 'domains'
+      );
   become: true
+  register: pdns_domains_table_check
   when: pdns_schema_stat.stat.exists
+
+- name: Import PowerDNS schema to PostgreSQL using postgresql_db
+  community.postgresql.postgresql_db:
+    name: "{{ postgresql_pdns_dbname }}"
+    login_host: "{{ postgresql_host if postgresql_connection_type == 'password' else omit }}"
+    login_port: "{{ postgresql_port if postgresql_connection_type == 'password' else omit }}"
+    login_user: "{{ postgresql_admin_user if postgresql_connection_type == 'password' else omit }}"
+    login_password: "{{ postgresql_admin_password if postgresql_connection_type == 'password' else omit }}"
+    target: "{{ pdns_pgsql_schema_file }}"
+    state: restore
+  become: true
   register: pdns_import_result
+  when:
+    - pdns_schema_stat.stat.exists
+    - pdns_domains_table_check.query_result is defined
+    - pdns_domains_table_check.query_result | length > 0
+    - pdns_domains_table_check.query_result[0].exists == false
 
 - name: Display PowerDNS schema import details
   ansible.builtin.debug:
-    msg: |
-      Schema import completed:
-      Return code: {{ pdns_import_result.rc }}
-      Standard output:
-      {{ pdns_import_result.stdout }}
-      Standard error:
-      {{ pdns_import_result.stderr }}
-  when: pdns_schema_stat.stat.exists
+    var: pdns_import_result
+  when: (pdns_import_result is defined and pdns_import_result.changed)
 
 - name: Grant table privileges to PowerDNS user
   community.postgresql.postgresql_privs:
